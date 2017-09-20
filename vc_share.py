@@ -77,10 +77,6 @@ feat_set=feat_set[:,:oldimg_index]
 img_set=img_set[:oldimg_index]
 loc_set=loc_set[:oldimg_index,:]
 
-print('all feat_set')
-print(feat_set.shape)
-print('all img_set')
-print(img_set.shape)
 
 print 'load finish'
 
@@ -91,31 +87,38 @@ feat_set = feat_set/myfeat_norm
 
 basedir='/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL3/dictionary_'+cat+'.pickle'
 Allsharedir=[]
-for i in range(0,51):
+for i in range(0,100):
 
-	sharedir='/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/dictionary_'+str(i)+'.pickle'
+	sharedir='/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL3/dictionary_'+str(i)+'.pickle'
 	Allsharedir.append(sharedir)
 
 with open(basedir,'rb') as fh:
     assignment, centers, example, norm = pickle.load(fh)
 
 vc_num=len(centers)
+print(vc_num)
+print(len(example))
 share_times=np.ones(vc_num)
 
-thresh1=0.95
+thresh1=0.1
 thresh0=[]
 for i in range(vc_num):
 	target=centers[i]
 	index = np.where(assignment==i)[0]
 	temp_feat = feat_set[:, index]
-	dist = np.sqrt(np.sum((temp_feat - target.reshape(-1,1))**2, axis=0))
+	error =np.sqrt(np.sum((temp_feat.T - target)**2, 1))
+
+	dist=error
 	sort_value = np.sort(dist)
+
 	dist_thresh = sort_value[int(thresh1*len(sort_value))]
 	thresh0.append(dist_thresh)
 
-for i in range(0,51):
-	if str(i)==str(cat):
-		continue
+#test
+
+for i in range(0,100):
+	# if str(i)==str(cat):
+	# 	continue
 	if i==39:
 		continue
 	fname=Allsharedir[i]
@@ -123,16 +126,20 @@ for i in range(0,51):
 		myassignment, mycenters, myexample,myfeat = pickle.load(ffh)
 	myfeat=np.asarray(myfeat)
 	myvc_num=len(mycenters)
+	print(myvc_num)
 	print('finish'+str(i))
 	for k in range(vc_num):
-		#target=centers[k].reshape(-1,1)
 		target=centers[k]
 		for j in range(myvc_num):
 			temp_feat=myfeat[j]
-			myfeat_norm = np.sqrt(np.sum(temp_feat**2, 0))
-			temp_feat=temp_feat/myfeat_norm
+			# temp_feat=mycenters[j]
+			# l2_norm = np.sqrt(np.sum(temp_feat**2, 0))
+			# temp_feat = temp_feat/l2_norm
 			center_dist = np.sqrt(np.sum((temp_feat-target)**2, axis=0))
 			if center_dist<thresh0[k]:
+				print(str(k)+';'+str(i)+':'+str(j))
+				print(center_dist)
+				print(thresh0[k])
 				share_times[k]+=1
 				break
 
