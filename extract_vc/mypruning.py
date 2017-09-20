@@ -14,7 +14,7 @@ cluster_num = 256
 layer_name = 'pool3'
 file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature3/L3Feature'+cat
 cluster_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL3/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
-save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/dictionary_'+cat+'.pickle'
+save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL3/dictionary_'+cat+'.pickle'
 
 print('loading data...')
 
@@ -109,10 +109,7 @@ centers=np.asarray(centers_new)
 mylen=len(assignment)
 myindent=np.where(assignment>-1)[0]
 assignment=assignment[myindent]
-print(assignment.shape)
-print(feat_set.shape)
 feat_set=feat_set[:,myindent]
-print(feat_set.shape)
 originimage=np.asarray(originimage)
 originimage=originimage[myindent]
 img_set=img_set[myindent]
@@ -178,8 +175,8 @@ sort_com = np.stack([aaa,bbb])
 print('greedy pruning...')
 sort_cls = sort_com[1].astype(int)
 rec = np.ones(K)
-thresh1 = 0.95  # magic number
-thresh2 = 0.2  # magic number
+thresh1 = 0.8  # magic number
+thresh2 = 0.3  # magic number
 
 prune = np.zeros((3,0))
 prune_res = []
@@ -323,7 +320,8 @@ for k in range(K):
 
         patch = img_set[patchindex]
         if idx==0:
-            savefeat.append(myfeat_set[:,patchindex])
+            savefeat.append(feat_set[:,patchindex])
+            print(feat_set[:,patchindex][0])
         # fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/example/'+ str(idx) + '.png'
         # cv2.imwrite(fname, patch)
 
