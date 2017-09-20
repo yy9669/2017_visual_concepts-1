@@ -13,7 +13,7 @@
   - vc_combination_score.py: get the recognition probability percentage drop when certain pair of VCs are missing.- 
   - vc_score.py: get the recognition probability percentage drop when certain VC is missing.
   - trip_quad.py: get the probability drop when 3/4 certain VCs are missing. The candidate triplets or quadruplets are created from the combination of top pair VCs generated in vc_combination_score.py
-  - vc_share.py: get the relationship between the importance of VC and its shared times (How many classes of objects have this VC ?) maybe have something wrong, need to be revised.
+  - vc_share.py: get the relationship between the importance of VC and its shared times 
 - analysis
   - draw\_picture/: draw some results
 - utils
