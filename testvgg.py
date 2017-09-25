@@ -18,16 +18,18 @@ from ProjectUtils import *
 import time
 
 class TestVgg:
-	def __init__(self):
+	def __init__(self,mylayer):
 		self.batch_size = 1
 		self.scale_size = vgg.vgg_16.default_image_size
-		self.feature_size=28
+		self.feature_size=224/pow(2,mylayer)
+		self.featDim_set = [64, 128, 256, 512, 512] 
 
+		self.featuredim=self.featDim_set[int(mylayer)-1]
 		tf.logging.set_verbosity(tf.logging.INFO)
 
 		with tf.device('/cpu:0'):
 			self.input_images = tf.placeholder(tf.float32, [self.batch_size, self.scale_size, self.scale_size, 3])
-			self.input_features = tf.placeholder(tf.float32, [self.batch_size, self.feature_size, self.feature_size, 256])
+			self.input_features = tf.placeholder(tf.float32, [self.batch_size, self.feature_size, self.feature_size, self.featuredim])
 		with tf.variable_scope('vgg_16', reuse=False):
 			with slim.arg_scope(vgg.vgg_arg_scope()):
 				self.final_result, _ = vgg.vgg_16(self.input_images,num_classes=100, is_training=False,dropout_keep_prob=1)
@@ -61,7 +63,8 @@ class TestVgg:
 		return out_features
 
 	def feature2result(self,feature,category):
-		batch_features = np.ndarray([self.batch_size, self.feature_size, self.feature_size, 256])
+		print(feature.shape)
+		batch_features = np.ndarray([self.batch_size, self.feature_size, self.feature_size, self.featuredim])
 		batch_features=feature
 		feed_dict = {self.input_features: batch_features}
 		out_features = self.sess.run(self.final_result_part2, feed_dict=feed_dict)
