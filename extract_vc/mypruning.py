@@ -4,23 +4,27 @@ import pickle
 import numpy as np
 from sys import argv
 from GetDataPath import *
+from utils import process_image
 from collections import Counter
 
 cat=argv[1]
-# tight_trick=argv[2]
-# count_trick=argv[3]
-#loose_tresh=float(argv[4])/10
-cluster_num = 256
-layer_name = 'pool3'
-file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature3/L3Feature'+cat
-cluster_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL3/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
-save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL3/dictionary_'+cat+'.pickle'
+mylayer=argv[2]
+
+featDim_set = [64, 128, 256, 512, 512] 
+cluster_num = featDim_set[int(mylayer)-1]
+if mylayer=='4':
+    cluster_num=256
+
+layer_name = 'pool'+mylayer
+
+file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
+cluster_file='/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
+save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/dictionary_'+cat+'.pickle'
+#file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature3/L3Feature'+cat
+#cluster_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL3/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
+#save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL3/dictionary_'+cat+'.pickle'
 
 print('loading data...')
-
-# number of files to read in
-file_num = 10
-maximg_cnt=20000
 
 fname = file_path+str(0)+'.npz'
 ff = np.load(fname)
@@ -28,6 +32,10 @@ ff = np.load(fname)
 feat_dim = ff['res'].shape[0]
 img_cnt = ff['res'].shape[1]
 oldimg_index=0
+
+# number of files to read in
+file_num = 10
+maximg_cnt=img_cnt*3
 
 originimage=[]
 feat_set = np.zeros((feat_dim, maximg_cnt*file_num))
@@ -37,10 +45,6 @@ originimage+=list(ff['originpath'])
 loc_dim = ff['loc_set'].shape[1]
 loc_set = np.zeros((maximg_cnt*file_num, loc_dim))
 loc_set[0:img_cnt,:] = ff['loc_set']
-
-img_dim = ff['img_set'].shape[1:]
-img_set = np.zeros([maximg_cnt*file_num]+list(img_dim))
-img_set[0:img_cnt] = ff['img_set']
 
 oldimg_index+=img_cnt
 
@@ -53,21 +57,16 @@ for ii in range(1,file_num):
     print(img_cnt)
     feat_set[:,oldimg_index:(oldimg_index + img_cnt)] = ff['res']
     loc_set[oldimg_index:(oldimg_index + img_cnt),:] = ff['loc_set']
-    img_set[oldimg_index:(oldimg_index + img_cnt)] = ff['img_set']
+    #img_set[oldimg_index:(oldimg_index + img_cnt)] = ff['img_set']
     oldimg_index+=img_cnt
 
 feat_set=feat_set[:,:oldimg_index]
-img_set=img_set[:oldimg_index]
+#img_set=img_set[:oldimg_index]
 loc_set=loc_set[:oldimg_index,:]
 
-print('all feat_set')
-print(feat_set.shape)
-print('all img_set')
-print(img_set.shape)
-assert(len(originimage)==len(img_set))
 
 with open(cluster_file, 'rb') as fh:
-    assignment, centers, _ = pickle.load(fh)
+    assignment, centers= pickle.load(fh)
 
 print 'load finish'
 
@@ -110,9 +109,10 @@ mylen=len(assignment)
 myindent=np.where(assignment>-1)[0]
 assignment=assignment[myindent]
 feat_set=feat_set[:,myindent]
+loc_set=loc_set[myindent,:]
 originimage=np.asarray(originimage)
 originimage=originimage[myindent]
-img_set=img_set[myindent]
+#img_set=img_set[myindent]
 
 print('compute metric...')
 # decide the rank of clusters
@@ -313,17 +313,18 @@ for k in range(K):
     print 'cluster '+str(k)+'start'
     for idx in range(num):
         patchindex=index[sort_idx[idx]]
-        # iii=cv2.imread(originimage[patchindex],cv2.IMREAD_UNCHANGED)
-        # ffname = '/data2/xuyangf/OcclusionProject/NaiveVersion/example/original/'+ str(idx) + '.png'
-        # cv2.imwrite(ffname, iii)
-        #print(originimage[patchindex])
 
-        patch = img_set[patchindex]
+        oimage=cv2.imread(originimage[patchindex], cv2.IMREAD_UNCHANGED)
+        oimage,_,__=process_image(oimage, '_',0)
+        oimage+=np.array([104., 117., 124.])
+        hi=int(loc_set[patchindex,3])
+        wi=int(loc_set[patchindex,4])
+        Arf=int(loc_set[patchindex,5])-int(loc_set[patchindex,3])
+
+        patch = oimage[hi:hi + Arf, wi:wi + Arf, :]
         if idx==0:
             savefeat.append(feat_set[:,patchindex])
             print(feat_set[:,patchindex][0])
-        # fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/example/'+ str(idx) + '.png'
-        # cv2.imwrite(fname, patch)
 
         patch_set[:,idx] = patch.flatten()
         

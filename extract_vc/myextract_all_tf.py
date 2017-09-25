@@ -33,15 +33,17 @@ Arf_set = [6, 16, 44, 100, 212]
 offset_set = np.ceil(np.array(Apad_set).astype(float)/np.array(Astride_set)).astype(int)
 
 # get pool1 layer parameters
-pool_n = 2
+cat=argv[1]
+extract_layer=argv[2]
+pool_n = int(extract_layer)-1
 Apad = Apad_set[pool_n]
 Astride = Astride_set[pool_n]
 featDim = featDim_set[pool_n]
 Arf = Arf_set[pool_n]
 offset = offset_set[pool_n]
 print offset
-cat=argv[1]
-savepath = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature3/L3Feature'+cat
+
+savepath = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+extract_layer+'/L'+extract_layer+'Feature'+cat
 
 # number of patches to include for each save file (84*100 images)
 #samp_size = 100000
@@ -52,14 +54,7 @@ scale_size = 224
 # Specify the dataset
 # Dataset path
 tf.logging.set_verbosity(tf.logging.INFO)
-# data_file = os.path.join(g_data_folder, 'data_set')
-# data_set = json.load(open(data_file, 'r'))
-# data_set = data_set['train']
-# paths = []
-# for i in data_set.keys():
-#     for j in data_set[i].keys():
-#         if len(data_set[i][j]) >= min_img_per_obj:
-#             paths += data_set[i][j]
+
 
 myimage_path=LoadImage(cat)
 image_path=[]
@@ -72,7 +67,8 @@ print(len(image_path))
 # for i in range(len(datapath)):
 #     image_path+=[os.path.join(datapath[i],s) for s in os.listdir(datapath[i])]
 
-extractor = FeatureExtractor(which_layer='pool3', which_snapshot=0, from_scratch=False)
+mylayer='pool'+extract_layer
+extractor = FeatureExtractor(which_layer=mylayer, which_snapshot=0, from_scratch=False)
 
 
 batch_num = 10
@@ -96,23 +92,12 @@ for i in range (0,batch_num):
 
     curr_paths = image_path[i * batch_size:(i + 1) * batch_size]
     features, images, blanks = extractor.extract_from_paths(curr_paths)
-
+    print(features.shape)
     tmp = features
-
-    # for j in range(0,len(images)):
-    #     fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/example/'+str(j) + '.png'
-    #     cv2.imwrite(fname, images[j])
     
     images+=np.array([104., 117., 124.])
-    img_rec.append(deepcopy(images))
+    # img_rec.append(deepcopy(images))
     
-    # for j in range(0,len(images)):
-    #     fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/example/pp'+str(j) + '.png'
-    #     cv2.imwrite(fname, img_rec[0][j])
-    # break
-
-    #assert (tmp.shape[0] == batch_size)
-    #assert (tmp.shape[3] == featDim)
     height, width = tmp.shape[1:3]
 
     # remove offset patches
@@ -176,10 +161,6 @@ for i in range (0,batch_num):
 
 
         res = res.reshape(res.shape[0], -1)
-        #print res.shape[1]
-        # print(len(np.random.permutation(res.shape[1])))
-        # rand_idx = np.random.permutation(res.shape[1])
-        # res = res[:, rand_idx]
         print 'middle'
         #break
         # should also save the loc_set
@@ -189,41 +170,23 @@ for i in range (0,batch_num):
         #batch_size_f = batch_size * (height - 2 * offset) * (width - 2 * offset)
         num=0
         for rr in range(res.shape[1]):
-            #aa, bb = np.unravel_index(rr, (itotal, batch_size_f))
-            #ni, ihi, iwi = np.unravel_index(bb, (batch_size, height - 2 * hoffset, width - 2 * woffset))
             ni=imageindex[rr]
-            # ihi,iwi=
-            # hi = Astride * (ihi + offset) - Apad
-            # wi = Astride * (iwi + offset) - Apad
+
             hi=numhi[rr]
             wi=numwi[rr]
             fhi=featurenumhi[rr]
             fwi=featurenumwi[rr]
-            # assert (aa == irec[rr] % check_num)
-            # assert (ni < batch_size)
-            # assert (hi >= 0)
-            # assert (hi <= 224 - Arf)
-            # assert (wi >= 0)
-            # assert (wi <= 224 - Arf)
 
-            #img = img_rec[aa][ni].copy()
 
-            img = img_rec[0][ni][hi:hi + Arf, wi:wi + Arf, :]
-            #print(sys.getsizeof(img))
-            #break
-            img_set.append(img)
-            # fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/example/'+ str(rr) + '.png'
-            # cv2.imwrite(fname, img)
-            #loc_set.append([i // check_num, irec[rr], ni, hi, wi, hi + Arf, wi + Arf])
+            #img = img_rec[0][ni][hi:hi + Arf, wi:wi + Arf, :]
+            # img_set.append(img)
+
             loc_set.append([i // check_num, irec[rr], ni, hi, wi, hi + Arf, wi + Arf,fhi,fwi])
             #if rr == rand_idx[50]:
             # print(loc_set)
         print 'last'
-        # for ii in range(0,len(img_set)):
-        #     fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/example/'+str(i)+'_'+ str(ii) + '.png'
-        #     cv2.imwrite(fname, img_set[ii])
         np.savez(savepath + str(i // check_num), res=np.asarray(res), loc_set=np.asarray(loc_set),
-                 img_set=np.asarray(img_set),originpath=np.asarray(originpath))
+            originpath=np.asarray(originpath))
 
 
         res = []
