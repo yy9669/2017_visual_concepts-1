@@ -6,6 +6,7 @@
   -	Summer_project_on_visual_concepts.pptx: introduction of Alan Yuille's report about VC
   - finetune_baseline.py: fine-tune the VGG downloaded in DownloadVGG.py with my training data,that is,100 classes of objects cropped from original imagenet images, each class has about 300 pictures.
   - imagenet_class_index.json: the description of my data
+  - network.py: the structure of VGG
 - extract VC
   - extract\_vc/: extract hidden layer features,get visual concepts,prunning and show examples of visual concepts
 - evaluate
