@@ -13,12 +13,13 @@ from sys import argv
 import math
 
 cat=argv[1]
-fname='/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL3/dictionary_'+cat+'.pickle'
+mylayer=argv[2]
+fname='/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/dictionary_'+cat+'.pickle'
 with open(fname,'rb') as fh:
     assignment, centers, example,_ = pickle.load(fh)
 
 
-fname ='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/cat'+str(cat)+'.npz'
+fname ='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/layer'+mylayer+'/cat'+str(cat)+'.npz'
 ff=np.load(fname)
 img_vc=ff['vc_score']
 vc_num=len(img_vc[0])
@@ -29,19 +30,19 @@ for i in range(vc_num):
 	img_vc_avg.append(float(np.sum(img_vc[np.where(img_vc[:,i]!=-1),i]))/img_num)
 
 #img_vc_avg=[int(1000*i) for i in img_vc_avg]
-ffname ='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_acc_score/cat'+str(cat)+'.npz'
-fff=np.load(ffname)
-img_acc_vc=fff['vc_acc_score']
-img_acc_vc_avg=[]
-for i in range(vc_num):
-	img_acc_vc_avg.append(np.average(img_acc_vc[np.where(img_vc[:,i]!=0),i]))
-img_acc_vc_avg=np.asarray(img_acc_vc_avg)
+# ffname ='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_acc_score/cat'+str(cat)+'.npz'
+# fff=np.load(ffname)
+# img_acc_vc=fff['vc_acc_score']
+# img_acc_vc_avg=[]
+# for i in range(vc_num):
+# 	img_acc_vc_avg.append(np.average(img_acc_vc[np.where(img_vc[:,i]!=0),i]))
+# img_acc_vc_avg=np.asarray(img_acc_vc_avg)
 
 indexsort=np.argsort(img_vc_avg)
 img_vc_avg=np.asarray(img_vc_avg)
 rindexsort=np.argsort(-img_vc_avg)
 print(rindexsort)
-img_acc_vc_avg=img_acc_vc_avg[rindexsort]
+# img_acc_vc_avg=img_acc_vc_avg[rindexsort]
 
 x=[i for i in range(len(img_vc_avg))]
 img_vc_avg=list(img_vc_avg)
@@ -54,8 +55,8 @@ plt.title('importance measurement curve')
 plt.xlabel("Ranked Visual Concepts")
 plt.ylabel("drop in the probability of the target class")
 plt.plot(x,img_vc_avg,'r-')
-plt.plot(x,img_acc_vc_avg,'b-')
-savedir='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/ImportanceExample/'+cat+'/ImportanceCurve.png'
+#plt.plot(x,img_acc_vc_avg,'b-')
+savedir='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/layer'+mylayer+'/ImportanceExample/'+cat+'/ImportanceCurve.png'
 plt.savefig(savedir) 
 
 img_vc_avg=img_vc_avg.sort()
@@ -68,6 +69,25 @@ img_vc_avg=img_vc_avg.sort()
 # plt.savefig(savedir) 
 
 #show images
+
+ss=int(math.sqrt(example[0].shape[0]/3))
+row=int(vc_num/5)+1
+top_img = np.zeros((10+(ss+10)*row, 10+(ss+10)*5, 3))
+
+
+for i in range(0,vc_num):
+	aa = i//5
+	bb = i%5	
+	rnum = 10+aa*(ss+10)
+	cnum = 10+bb*(ss+10)
+	#top10
+	top_img[rnum:rnum+ss, cnum:cnum+ss, :] = example[indexsort[vc_num-1-i]][:,0].reshape(ss,ss,3).astype(int)
+	print('top information')
+	print(indexsort[vc_num-1-i])
+	print(len(np.where(assignment==(indexsort[vc_num-1-i]))[0]))
+
+fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/layer'+mylayer+'/ImportanceExample/'+cat+'/all.png'
+cv2.imwrite(fname, top_img)
 
 ss=int(math.sqrt(example[0].shape[0]/3))
 top_img = np.zeros((10+(ss+10)*2, 10+(ss+10)*5, 3))
@@ -90,11 +110,11 @@ for i in range(0,10):
 	#last 10
 	last_img[rnum:rnum+ss, cnum:cnum+ss, :] = example[indexsort[i]][:,0].reshape(ss,ss,3).astype(int)
 
-fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/ImportanceExample/'+cat+'/top.png'
+fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/layer'+mylayer+'/ImportanceExample/'+cat+'/top.png'
 cv2.imwrite(fname, top_img)
-fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/ImportanceExample/'+cat+'/middle.png'
+fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/layer'+mylayer+'/ImportanceExample/'+cat+'/middle.png'
 cv2.imwrite(fname, middle_img)
-fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/ImportanceExample/'+cat+'/last.png'
+fname = '/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/layer'+mylayer+'/ImportanceExample/'+cat+'/last.png'
 cv2.imwrite(fname, last_img)
 
 print('draw finish')
