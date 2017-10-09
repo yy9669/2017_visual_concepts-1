@@ -21,7 +21,11 @@ reload(sys)
 sys.setdefaultencoding('utf8')
 
 cat=argv[1]
-cluster_num = 256
+mylayer=argv[2]
+featDim_set = [64, 128, 256, 512, 512] 
+cluster_num = featDim_set[int(mylayer)-1]
+if mylayer=='4':
+    cluster_num=256
 myimage_path=LoadImage(cat)
 image_path=[]
 for mypath in myimage_path:
@@ -29,17 +33,13 @@ for mypath in myimage_path:
     if(max(myimg.shape[0],myimg.shape[1])>100):
         image_path.append(mypath)
 img_num=len(image_path)
-layer_name = 'pool3'
-file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature3/L3Feature'+cat
+layer_name = 'pool'+mylayer
+file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
 #cluster_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL3/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
-prun_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL3/dictionary_'+cat+'.pickle'
-save_file='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/cat'+cat
+prun_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/dictionary_'+cat+'.pickle'
+save_file='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/layer'+mylayer+'/cat'+cat
 
 print('loading data...')
-
-# number of files to read in
-file_num = 10
-maximg_cnt=20000
 
 fname = file_path+str(0)+'.npz'
 ff = np.load(fname)
@@ -47,6 +47,10 @@ ff = np.load(fname)
 feat_dim = ff['res'].shape[0]
 img_cnt = ff['res'].shape[1]
 oldimg_index=0
+
+# number of files to read in
+file_num = 10
+maximg_cnt=img_cnt*3
 
 originimage=[]
 feat_set = np.zeros((feat_dim, maximg_cnt*file_num))
@@ -91,7 +95,7 @@ with open(prun_file, 'rb') as fh:
 
 print('load finish')
 
-predictor=TestVgg()
+predictor=TestVgg(int(mylayer))
 
 
 # def GetPossDecrease(original_img,occluded_img,category):
