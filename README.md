@@ -23,4 +23,8 @@
   - temp.py: some test code
   -	testvgg.py: similar to feature-extractor.py, useful when you are tring to apply Gaussian template to the hidden layer.
   - utils.py: some useful utils in preprocessing. the only useful one is process_image
-
+  
+- update
+add some fine tune code. I fine tune the top 2 layer of vgg with aperture images which only show one of the top 10 visual concepts
+  - get_aperture_image.py: get the training images
+  - finetune_aperture_1VC.py: the fine-tuning process
