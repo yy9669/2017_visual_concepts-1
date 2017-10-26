@@ -83,11 +83,8 @@ feat_set=feat_set[:,:oldimg_index]
 #img_set=img_set[:oldimg_index]
 loc_set=loc_set[:oldimg_index,:]
 
-print('all feat_set')
-print(feat_set.shape)
-print('all img_set')
-#print(img_set.shape)
-#assert(len(originimage)==len(img_set))
+myfeat_norm = np.sqrt(np.sum(feat_set**2, 0))
+feat_set = feat_set/myfeat_norm
 
 with open(prun_file, 'rb') as fh:
     assignment, centers, _,norm = pickle.load(fh)
@@ -113,7 +110,6 @@ def disttresh(input_index,cluster_center):
     error = np.sum((temp_feat.T - cluster_center)**2, 1)
     sort_idx = np.argsort(error)
     return input_index[sort_idx[:int(thresh1*len(sort_idx))]]
-
 
 for k in rindexsort[:10]:
     target=centers[k]

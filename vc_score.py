@@ -81,14 +81,11 @@ for ii in range(1,file_num):
     oldimg_index+=img_cnt
 
 feat_set=feat_set[:,:oldimg_index]
-#img_set=img_set[:oldimg_index]
 loc_set=loc_set[:oldimg_index,:]
 
-print('all feat_set')
-print(feat_set.shape)
-print('all img_set')
-#print(img_set.shape)
-#assert(len(originimage)==len(img_set))
+#l2
+myfeat_norm = np.sqrt(np.sum(feat_set**2, 0))
+feat_set = feat_set/myfeat_norm
 
 with open(prun_file, 'rb') as fh:
     assignment, centers, _,norm = pickle.load(fh)
@@ -210,21 +207,3 @@ for k in range(0,len(centers)):
 	# print(img_vc[283][0])
 	# break
 np.savez(save_file,vc_score=img_vc)
-
-
-
-
-	
-
-
-
-
-#NaiveVersion occlussion
-
-# input withour VC's occlusion
-
-# input with VC's occlusion
-
-# calculate the loss difference
-
-#NaiveVersion aperture # boosting method
