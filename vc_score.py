@@ -8,7 +8,7 @@ from copy import *
 from ProjectUtils import *
 from GetDataPath import *
 from testvgg import TestVgg
-
+import sys
 sys.path.insert(0, './')
 sys.path.append('/home/xuyangf/project/ML_deliverables/Siamese_iclr17_tf-master/src/')
 
@@ -22,22 +22,28 @@ sys.setdefaultencoding('utf8')
 
 cat=argv[1]
 mylayer=argv[2]
-featDim_set = [64, 128, 256, 512, 512] 
-cluster_num = featDim_set[int(mylayer)-1]
-if mylayer=='4':
-    cluster_num=256
+
 myimage_path=LoadImage(cat)
+# myimage_path=[]
+# myimage_path+=[os.path.join('/data2/xuyangf/OcclusionProject/NaiveVersion/PortraitImages/train',s) 
+#         for s in os.listdir('/data2/xuyangf/OcclusionProject/NaiveVersion/PortraitImages/train')]
+# myimage_path=list(myimage_path)
+
 image_path=[]
 for mypath in myimage_path:
     myimg=cv2.imread(mypath, cv2.IMREAD_UNCHANGED)
     if(max(myimg.shape[0],myimg.shape[1])>100):
         image_path.append(mypath)
 img_num=len(image_path)
-layer_name = 'pool'+mylayer
 file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
-#cluster_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL3/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
 prun_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/dictionary_'+cat+'.pickle'
-save_file='/data2/xuyangf/OcclusionProject/NaiveVersion/vc_score/layer'+mylayer+'/cat'+cat
+save_file='/data2/xuyangf/OcclusionProject/NaiveVersion/new_vc_score/layer'+mylayer+'/cat'+cat
+if not os.path.exists('/data2/xuyangf/OcclusionProject/NaiveVersion/new_vc_score/layer'+mylayer+'/'):
+        os.mkdir('/data2/xuyangf/OcclusionProject/NaiveVersion/new_vc_score/layer'+mylayer+'/')
+
+# file_path='/data2/xuyangf/OcclusionProject/NaiveVersion/feature/Portrait/special_test_'
+# prun_file='/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/Portrait/special_test.pickle'
+# save_file='/data2/xuyangf/OcclusionProject/NaiveVersion/new_vc_score/Portrait/portrait_score'
 
 print('loading data...')
 
@@ -92,9 +98,7 @@ with open(prun_file, 'rb') as fh:
 
 print('load finish')
 
-predictor=TestVgg(int(mylayer))
-
-
+predictor=TestVgg(int(mylayer[-1]),'fine_tuned')
 # def GetPossDecrease(original_img,occluded_img,category):
 # 	originalp=predictor.getprob(original_img,category)
 # 	occludedp=predictor.getprob(occluded_img,category)
@@ -119,6 +123,7 @@ def GetPossDecrease(original_feature,occluded_feature,category):
 		return -1
 	# if(originalp<occludedp):
 	# 	return -1
+
 	return float(originalp-occludedp)/originalp
 
 def disttresh(input_index,cluster_center):
@@ -155,53 +160,52 @@ for k in range(0,len(centers)):
 		else:
 			original_img=cv2.imread(image_path[n], cv2.IMREAD_UNCHANGED)
 			original_feature=predictor.img2feature(original_img)
-			occluded_feature=deepcopy(original_feature)
+			thesum=0
 			for i in range(len(myindex)):
 				fhi=int(loc_set[myindex[i]][7])
 				fwi=int(loc_set[myindex[i]][8])
-				
+				occluded_feature=deepcopy(original_feature)
 				# Gause occlusion
-				occluded_feature[0][fhi][fwi]=0
-				occluded_feature[0][fhi-1][fwi]=0.25*occluded_feature[0][fhi-1][fwi]
-				occluded_feature[0][fhi][fwi-1]=0.25*occluded_feature[0][fhi][fwi-1]
-				occluded_feature[0][fhi+1][fwi]=0.25*occluded_feature[0][fhi+1][fwi]
-				occluded_feature[0][fhi][fwi+1]=0.25*occluded_feature[0][fhi][fwi+1]
+				hiddenlayer_shape=occluded_feature[0].shape
+				mymask=generate_gaussian_mask(fhi,fwi,hiddenlayer_shape)
+				occluded_feature[0]=occluded_feature[0]*mymask
+				# occluded_feature[0][fhi-1][fwi]=0.25*occluded_feature[0][fhi-1][fwi]
+				# occluded_feature[0][fhi][fwi-1]=0.25*occluded_feature[0][fhi][fwi-1]
+				# occluded_feature[0][fhi+1][fwi]=0.25*occluded_feature[0][fhi+1][fwi]
+				# occluded_feature[0][fhi][fwi+1]=0.25*occluded_feature[0][fhi][fwi+1]
 
-				occluded_feature[0][fhi-1][fwi-1]=0.375*occluded_feature[0][fhi-1][fwi-1]
-				occluded_feature[0][fhi+1][fwi-1]=0.375*occluded_feature[0][fhi+1][fwi-1]
-				occluded_feature[0][fhi+1][fwi+1]=0.375*occluded_feature[0][fhi+1][fwi+1]
-				occluded_feature[0][fhi-1][fwi+1]=0.375*occluded_feature[0][fhi-1][fwi+1]
+				# occluded_feature[0][fhi-1][fwi-1]=0.375*occluded_feature[0][fhi-1][fwi-1]
+				# occluded_feature[0][fhi+1][fwi-1]=0.375*occluded_feature[0][fhi+1][fwi-1]
+				# occluded_feature[0][fhi+1][fwi+1]=0.375*occluded_feature[0][fhi+1][fwi+1]
+				# occluded_feature[0][fhi-1][fwi+1]=0.375*occluded_feature[0][fhi-1][fwi+1]
 				
-				occluded_feature[0][fhi+2][fwi]=0.625*occluded_feature[0][fhi+2][fwi]
-				occluded_feature[0][fhi-2][fwi]=0.625*occluded_feature[0][fhi-2][fwi]
-				occluded_feature[0][fhi][fwi-2]=0.625*occluded_feature[0][fhi][fwi-2]
-				occluded_feature[0][fhi][fwi+2]=0.625*occluded_feature[0][fhi][fwi+2]
+				# occluded_feature[0][fhi+2][fwi]=0.625*occluded_feature[0][fhi+2][fwi]
+				# occluded_feature[0][fhi-2][fwi]=0.625*occluded_feature[0][fhi-2][fwi]
+				# occluded_feature[0][fhi][fwi-2]=0.625*occluded_feature[0][fhi][fwi-2]
+				# occluded_feature[0][fhi][fwi+2]=0.625*occluded_feature[0][fhi][fwi+2]
 
-				occluded_feature[0][fhi-1][fwi-2]=0.75*occluded_feature[0][fhi-1][fwi-2]
-				occluded_feature[0][fhi-1][fwi+2]=0.75*occluded_feature[0][fhi-1][fwi+2]
-				occluded_feature[0][fhi+1][fwi-2]=0.75*occluded_feature[0][fhi+1][fwi-2]
-				occluded_feature[0][fhi+1][fwi+2]=0.75*occluded_feature[0][fhi+1][fwi+2]
-				occluded_feature[0][fhi-2][fwi-1]=0.75*occluded_feature[0][fhi-2][fwi-1]
-				occluded_feature[0][fhi-2][fwi+1]=0.75*occluded_feature[0][fhi-2][fwi+1]
-				occluded_feature[0][fhi+2][fwi-1]=0.75*occluded_feature[0][fhi+2][fwi-1]
-				occluded_feature[0][fhi+2][fwi+1]=0.75*occluded_feature[0][fhi+2][fwi+1]
+				# occluded_feature[0][fhi-1][fwi-2]=0.75*occluded_feature[0][fhi-1][fwi-2]
+				# occluded_feature[0][fhi-1][fwi+2]=0.75*occluded_feature[0][fhi-1][fwi+2]
+				# occluded_feature[0][fhi+1][fwi-2]=0.75*occluded_feature[0][fhi+1][fwi-2]
+				# occluded_feature[0][fhi+1][fwi+2]=0.75*occluded_feature[0][fhi+1][fwi+2]
+				# occluded_feature[0][fhi-2][fwi-1]=0.75*occluded_feature[0][fhi-2][fwi-1]
+				# occluded_feature[0][fhi-2][fwi+1]=0.75*occluded_feature[0][fhi-2][fwi+1]
+				# occluded_feature[0][fhi+2][fwi-1]=0.75*occluded_feature[0][fhi+2][fwi-1]
+				# occluded_feature[0][fhi+2][fwi+1]=0.75*occluded_feature[0][fhi+2][fwi+1]
 
-				occluded_feature[0][fhi-2][fwi-2]=0.875*occluded_feature[0][fhi-21][fwi-2]
-				occluded_feature[0][fhi-2][fwi+2]=0.875*occluded_feature[0][fhi-2][fwi+2]
-				occluded_feature[0][fhi+2][fwi-2]=0.875*occluded_feature[0][fhi+2][fwi-2]
-				occluded_feature[0][fhi+2][fwi+2]=0.875*occluded_feature[0][fhi+2][fwi+2]				
+				# occluded_feature[0][fhi-2][fwi-2]=0.875*occluded_feature[0][fhi-2][fwi-2]
+				# occluded_feature[0][fhi-2][fwi+2]=0.875*occluded_feature[0][fhi-2][fwi+2]
+				# occluded_feature[0][fhi+2][fwi-2]=0.875*occluded_feature[0][fhi+2][fwi-2]
+				# occluded_feature[0][fhi+2][fwi+2]=0.875*occluded_feature[0][fhi+2][fwi+2]				
 
-				# print(hi)
-				# print(wi)
-				# print(patch_size)
-				
-			img_vc[n][k]=GetPossDecrease(original_feature,occluded_feature,int(cat))
+				thesum+=GetPossDecrease(original_feature,occluded_feature,int(cat))
+			img_vc[n][k]=thesum/len(myindex)
 			# if(len(myindex)==14):
 			# 	print('yes')
 			# 	print(k)
 			# 	print(n)
 			# 	print(img_vc[n][k])
-		print 'one finish'
+		print('one finish')
 	# print(img_vc.shape)
 	# print(img_vc[294:296,0])
 	# print(img_vc[283][0])

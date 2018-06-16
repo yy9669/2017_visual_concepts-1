@@ -4,7 +4,9 @@ import tensorflow.contrib.slim as slim
 import sys
 import cv2
 import random
-
+import matplotlib.mlab as MLA 
+from sklearn import preprocessing
+# from pylab import *
 sys.path.insert(0, './')
 
 
@@ -75,12 +77,65 @@ def average_gradients(tower_grads):
         average_grads.append(grad_and_var)
     return average_grads
 
+def process_image2(img):
+    scale_size = 224
+    vgg_mean = np.float32([[[104., 117., 124.]]])
+    if len(img.shape)==2:
+        h,w=img.shape
+        c=1
+    else:
+        h, w, c = img.shape
+    if c == 1:
+        gray = np.float32(img)
+        gray = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+    else:
+        gray=img
+    noise = np.random.randn(scale_size, scale_size, 3) * 0.0
+    if h>w:
+        hsize=(h*224)/w
+        gray=cv2.resize(gray,(224,hsize))
+        gray=gray[(hsize-224)/2:(hsize-224)/2+224,:,:]
+    else:
+         wsize=(w*224)/h
+         gray=cv2.resize(gray,(wsize,224))
+         gray=gray[:,(wsize-224)/2:(wsize-224)/2+224,:]
+    return gray- vgg_mean + noise,0,0
+
+def process_image3(img):
+    scale_size = 224
+    smallest_side = 256
+    # vgg_mean = np.float32([[[123.68, 116.78, 103.94]]])
+    vgg_mean = np.float32([[[104., 117., 124.]]])
+    # vgg_mean = [0, 0, 0]
+    if len(img.shape)==2:
+        h,w=img.shape
+        c=1
+    else:
+        h, w, c = img.shape
+    if c == 1:
+        gray = np.float32(img)
+        gray = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+    else:
+        gray=img
+    noise = np.random.randn(scale_size, scale_size, 3) * 0.0
+    if h>w:
+        hsize=(h*smallest_side)/w
+        wsize=smallest_side
+        gray=cv2.resize(gray,(smallest_side,hsize))
+        gray=gray[(hsize-224)/2:(hsize-224)/2+224,(wsize-224)/2:(wsize-224)/2+224,:]
+    else:
+         wsize=(w*smallest_side)/h
+         hsize=smallest_side
+         gray=cv2.resize(gray,(wsize,smallest_side))
+         gray=gray[(hsize-224)/2:(hsize-224)/2+224,(wsize-224)/2:(wsize-224)/2+224,:]
+    
+    return gray- vgg_mean + noise,0,0
 
 def process_image(img, path, augment):
     scale_size = 224
     vgg_mean = np.float32([[[104., 117., 124.]]])
-    background = np.array([[[255., 255., 255.]]])
-
+    # background = np.array([[[255., 255., 255.]]])
+    background = np.array([[[104., 117., 124.]]])
     assert img is not None
     if len(img.shape)==2:
         h,w=img.shape
@@ -257,12 +312,14 @@ def online_clustering(features, num_vc):
     '''Do online clustering'''
 
     normed_features = tf.nn.l2_normalize(features, dim=3, name='normed_features')
+    # each vc_center is channel number dims
     vc_centers = tf.get_variable('vc_centers', initializer=tf.truncated_normal([1, 1, features.shape[3].value, num_vc]))
     normed_vc_centers = tf.nn.l2_normalize(vc_centers, dim=2, name='normed_vc_centers')
     vc_cos = tf.nn.conv2d(normed_features, normed_vc_centers, [1, 1, 1, 1], "SAME", name='vc_cos')
     vc_softmax = tf.nn.softmax(vc_cos, dim=-1, name='vc_softmax')
     sparse_loss_mean = -tf.reduce_mean(tf.reduce_sum(tf.multiply(vc_softmax, vc_cos, name='softmax_cos'), axis=3, name='sum_softmax_cos'), name='mean_sum_softmax_cos')
     # sparse_loss_mean = tf.reduce_mean(tf.reduce_sum(-tf.multiply(vc_softmax, tf.log(vc_softmax), name='plogp'), axis=3, name='entropy'), name='mean_entropy')
+
 
     tf.add_to_collection(tf.get_variable_scope().original_name_scope, normed_features)
     tf.add_to_collection(tf.get_variable_scope().original_name_scope, normed_vc_centers)
@@ -271,3 +328,87 @@ def online_clustering(features, num_vc):
     tf.add_to_collection(tf.get_variable_scope().original_name_scope, sparse_loss_mean)
     end_points = slim.utils.convert_collection_to_dict(tf.get_variable_scope().original_name_scope)
     return sparse_loss_mean, end_points
+
+def generate_bubble_image(img,center_x,center_y,sigma,aperture,ImgSize):
+    VGG_MEAN = [103.94, 116.78, 123.94] # BGR
+    pixel_nums =np.arange(ImgSize)
+    [X,Y] = np.meshgrid(pixel_nums,pixel_nums)
+    x_axis=np.reshape(X,ImgSize*ImgSize)
+    y_axis=np.reshape(Y,ImgSize*ImgSize)
+    weights=np.maximum(MLA.normpdf(np.sqrt((x_axis - center_x)**2 + (y_axis - center_y)**2) - aperture/2,0,sigma),
+    (np.sqrt((x_axis - center_x)**2 + (y_axis - center_y)**2) < aperture/2)*MLA.normpdf(0,0,sigma))
+    PDF = np.reshape(weights,(ImgSize,ImgSize));
+    PDF = PDF/np.max(PDF)
+    PDF=np.array([PDF,PDF,PDF])
+    PDF=np.transpose(PDF, (1,2,0))
+    image=PDF*img
+    back = VGG_MEAN*(1-PDF)*np.ones((ImgSize,ImgSize,3))
+    image = image + back
+    return image,PDF
+
+def generate_greyline_image(img,axis,center,sigma,aperture,ImgSize):
+    VGG_MEAN = [103.94, 116.78, 123.94] # BGR
+    pixel_nums =np.arange(ImgSize)
+    [X,Y] = np.meshgrid(pixel_nums,pixel_nums)
+    x_axis=np.reshape(X,ImgSize*ImgSize)
+    y_axis=np.reshape(Y,ImgSize*ImgSize)
+
+    if axis=='x':
+        weights=np.maximum(MLA.normpdf(np.sqrt((x_axis - center)**2 ) - aperture/2,0,sigma),
+    (np.sqrt((x_axis - center)**2 ) < aperture/2)*MLA.normpdf(0,0,sigma))
+    if axis=='y':
+        weights=np.maximum(MLA.normpdf(np.sqrt((y_axis - center)**2 ) - aperture/2,0,sigma),
+    (np.sqrt((y_axis - center)**2 ) < aperture/2)*MLA.normpdf(0,0,sigma))        
+    PDF = np.reshape(weights,(ImgSize,ImgSize));
+    PDF = PDF/np.max(PDF)
+    PDF=np.array([PDF,PDF,PDF])
+    PDF=np.transpose(PDF, (1,2,0))
+    image=PDF*img
+    back = VGG_MEAN*(1-PDF)*np.ones((ImgSize,ImgSize,3))
+    image = image + back
+    return image,PDF
+
+
+def centerlize_aperture(img,center_x,center_y):
+    center_x=int(center_x)
+    center_y=int(center_y)
+    center_img=np.zeros((224,224,3))
+    center_img+=np.array([103.94, 116.78, 123.94])
+    center_img[80:144,80:144,:]=img[center_y-32:center_y+32,center_x-32:center_x+32,:]
+    return center_img
+
+def get_center_feature(img,myextractor):
+    batch_images = np.ndarray([1, 224, 224, 3])
+    batch_images[0],_,__= process_image(img, '__', augment=0)
+    features =  myextractor.extract_from_batch_images(batch_images)
+    tmp=features
+    height, width = tmp.shape[1:3]
+    myfeature=features[0][height/2][width/2]
+    myfeat_norm = np.sqrt(np.sum(myfeature**2, 0))
+    return myfeature/myfeat_norm
+    
+def get_all_feature(img,myextractor):
+    batch_images = np.ndarray([1, 224, 224, 3])
+    batch_images[0],_,__= process_image(img, '__', augment=0)
+    features =  myextractor.extract_from_batch_images(batch_images)
+    tmp=features
+    height, width = tmp.shape[1:3]
+    myfeature=features[0]
+    myfeature=myfeature.reshape(myfeature.shape[0]*myfeature.shape[1],-1)
+    myfeature=preprocessing.normalize(myfeature, norm='l2')
+    myfeature=np.reshape(myfeature,(-1,))
+    return myfeature
+
+# return numpy gaussian mask
+def generate_gaussian_mask(x,y,hiddenlayer_shape):
+    mask=np.ones(hiddenlayer_shape)
+    gaussian=np.array([[0.875,0.75,0.625,0.75,0.875],[0.75,0.375,0.25,0.375,0.75],[0.625,0.25,0,0.25,0.625],[0.75,0.375,0.25,0.375,0.75],[0.875,0.75,0.625,0.75,0.875]])
+    for i in range(0,5):
+        for j in range(0,5):
+            mask[x-2+i,y-2+j,:]=gaussian[i,j]
+    return mask
+
+# def add_mask(feature,mask):    
+#     return
+
+    
