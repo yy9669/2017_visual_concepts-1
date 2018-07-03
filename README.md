@@ -17,10 +17,9 @@
   - vc_share.py: get the relationship between the importance of VC and its shared times 
 - analysis
   - draw\_picture/: draw some results
-- fine tune process
+- finetune process
   - generate_images: generate some training and testing images 
-  - finetune_aperture_1VC.py: fine tune with 1 aperture opened images
-  - finetune_aperture_1VC.py: fine tune with 1 or 2 apertures opened images
+  - finetune_aperture_multiple_VC.py: finetune with 1 or 2 apertures opened images
   - network_test.py: test
 
 - utils
