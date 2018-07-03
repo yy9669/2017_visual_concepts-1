@@ -3,7 +3,7 @@ import cv2,os,glob,pickle,sys
 import numpy as np
 import tensorflow as tf
 from sys import argv
-
+from enum import Enum
 sys.path.insert(0, './')
 sys.path.append('/home/xuyangf/project/ML_deliverables/Siamese_iclr17_tf-master/src/')
 from tensorflow.python.client import timeline
@@ -17,46 +17,96 @@ from copy import *
 from feature_extractor import FeatureExtractor
 from GetDataPath import *
 
-# datapath=[]
-# datapath.append('/data2/xuyangf/OcclusionProject/NaiveVersion/CroppedImage')
-# Alexnet
-# Apad_set = [0, 0, 16, 16, 32, 48, 64] # padding sizev
-# Astride_set = [4, 8, 8, 16, 16, 16, 16] # stride size
-# featDim_set = [96, 96, 256, 256, 384, 384, 256] # feature dimension
-# Arf_set = [11, 19, 51, 67, 99, 131, 163]
-# offset_set = np.ceil(np.array(Apad_set)/np.array(Astride_set)).astype(int)
-
-Apad_set = [2, 6, 18, 42, 90] # padding size
-Astride_set = [2, 4, 8, 16, 32] # stride size
-featDim_set = [64, 128, 256, 512, 512] # feature dimension
-Arf_set = [6, 16, 44, 100, 212]
-offset_set = np.ceil(np.array(Apad_set).astype(float)/np.array(Astride_set)).astype(int)
-
-# get pool1 layer parameters
 cat=argv[1]
 extract_layer=argv[2]
-pool_n = int(extract_layer)-1
-Apad = Apad_set[pool_n]
-Astride = Astride_set[pool_n]
-featDim = featDim_set[pool_n]
-Arf = Arf_set[pool_n]
-offset = offset_set[pool_n]
-print offset
+mod=argv[3]
 
-savepath = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+extract_layer+'/L'+extract_layer+'Feature'+cat
+def enum(**enums):
+    return type('Enum', (), enums)
 
-# number of patches to include for each save file (84*100 images)
-#samp_size = 100000
-samp_images = 300
-#min_img_per_obj = 12
+class Apad_set(Enum):
+    pool1=2
+    pool2=6
+    pool3=18
+    pool4=42
+    pool5=90
+    conv2_1=4
+    conv2_2=6
+    conv3_1=10
+    conv3_2=14
+    conv3_3=18
+    conv4_1=26
+    conv4_2=34
+    conv4_3=42
+
+class Astride_set(Enum):
+    pool1=2
+    pool2=4
+    pool3=8
+    pool4=16
+    pool5=32
+    conv2_1=2
+    conv2_2=2
+    conv3_1=4
+    conv3_2=4
+    conv3_3=4  
+    conv4_1=8
+    conv4_2=8
+    conv4_3=8
+
+class Arf_set(Enum):
+    pool1=6
+    pool2=16
+    pool3=44
+    pool4=100
+    pool5=212
+    conv2_1=10
+    conv2_2=14
+    conv3_1=24
+    conv3_2=32
+    conv3_3=40
+    conv4_1=60
+    conv4_2=76
+    conv4_3=92
+
+
+Arf=float(Arf_set[extract_layer].value)
+Apad=float(Apad_set[extract_layer].value)
+Astride=float(Astride_set[extract_layer].value)
+offset=np.ceil(Apad/Astride)
+print('offset')
+print(offset)
 scale_size = 224
 
-# Specify the dataset
-# Dataset path
+if mod=='0':
+    savepath = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+extract_layer+'/L'+extract_layer+'Feature'+cat
+    if not os.path.exists('/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+extract_layer+'/'):
+        os.mkdir('/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+extract_layer)
+    myimage_path=LoadImage(cat)
+
+if mod=='1':
+    savepath= '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/Portrait/special_test_'
+    myimage_path=[]
+    myimage_path+=[os.path.join('/data2/xuyangf/OcclusionProject/NaiveVersion/PortraitImages/train',s) 
+            for s in os.listdir('/data2/xuyangf/OcclusionProject/NaiveVersion/PortraitImages/train')]
+    myimage_path=list(myimage_path)
+
+
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-myimage_path=LoadImage(cat)
+# myimage_path=LoadImage2(cat)
+# for Chen Liu Project
+
+
+# image_path=[]
+# for i in range(0,100):
+#     catimage_path=LoadImage2(i)
+#     catimage_path=list(catimage_path)
+#     image_path+=catimage_path[:5]
+
+# print(image_path)
+
 image_path=[]
 for mypath in myimage_path:
     myimg=cv2.imread(mypath, cv2.IMREAD_UNCHANGED)
@@ -64,15 +114,21 @@ for mypath in myimage_path:
         image_path.append(mypath)
 
 print(len(image_path))
-# for i in range(len(datapath)):
-#     image_path+=[os.path.join(datapath[i],s) for s in os.listdir(datapath[i])]
 
-mylayer='pool'+extract_layer
+mylayer=extract_layer
+if len(extract_layer)>5:
+    mylayer=extract_layer[:5]+'/'+extract_layer
+
 extractor = FeatureExtractor(which_layer=mylayer, which_snapshot=0, from_scratch=False)
 
 
+print('mytest: '+str(len(image_path)))
 batch_num = 10
-batch_size = int(len(image_path)/10)+1
+# batch_num=50
+batch_size = int((len(image_path)-1)/10)+1
+# batch_size=10
+if len(image_path)==100:
+    batch_size=10
 print('batch_num: {0}'.format(batch_num))
 check_num = 1  # save 1 batch to one file
 
@@ -92,12 +148,8 @@ for i in range (0,batch_num):
 
     curr_paths = image_path[i * batch_size:(i + 1) * batch_size]
     features, images, blanks = extractor.extract_from_paths(curr_paths)
-    print(features.shape)
-    tmp = features
-    
     images+=np.array([104., 117., 124.])
-    # img_rec.append(deepcopy(images))
-    
+    tmp=features
     height, width = tmp.shape[1:3]
 
     # remove offset patches
@@ -105,11 +157,11 @@ for i in range (0,batch_num):
         woffset=0
         hoffset=0
         if(blanks[j][0]>blanks[j][1]):
-            woffset=np.ceil((np.array(blanks[j][0]).astype(float)+np.array(Apad_set)[pool_n].astype(float))/np.array(Astride_set)[pool_n]).astype(int)
-            hoffset=offset
+            woffset=int(np.ceil((np.array(blanks[j][0]).astype(float)+Apad)/Astride))
+            hoffset=int(offset)
         else:
-            hoffset=np.ceil((np.array(blanks[j][1]).astype(float)+np.array(Apad_set)[pool_n].astype(float))/np.array(Astride_set)[pool_n]).astype(int)
-            woffset=offset
+            hoffset=int(np.ceil((np.array(blanks[j][1]).astype(float)+Apad)/Astride))
+            woffset=int(offset)
 
         print('batch'+ str(i)+'image'+str(j) )
         print(blanks[j])
@@ -137,7 +189,6 @@ for i in range (0,batch_num):
             #numhi.append(hhi+hoffset)
             #numwi.append(wwi+woffset)
             if ixx==0:
-                print 'test'
                 print(phi)
                 print(pwi)
     # print(ggtmp)
@@ -161,7 +212,6 @@ for i in range (0,batch_num):
 
 
         res = res.reshape(res.shape[0], -1)
-        print 'middle'
         #break
         # should also save the loc_set
         loc_set = []
@@ -184,11 +234,8 @@ for i in range (0,batch_num):
             loc_set.append([i // check_num, irec[rr], ni, hi, wi, hi + Arf, wi + Arf,fhi,fwi])
             #if rr == rand_idx[50]:
             # print(loc_set)
-        print 'last'
         np.savez(savepath + str(i // check_num), res=np.asarray(res), loc_set=np.asarray(loc_set),
             originpath=np.asarray(originpath))
-
-
         res = []
         irec = []
         img_rec = []
@@ -196,4 +243,6 @@ for i in range (0,batch_num):
         originpath=[]
         ggtmp=[]
         imageindex=[]
-        print 'file finish'
+
+
+print('all finish')

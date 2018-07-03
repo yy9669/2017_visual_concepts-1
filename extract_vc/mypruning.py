@@ -1,29 +1,56 @@
 from __future__ import division
 import cv2
-import pickle
+import pickle,os
 import numpy as np
 from sys import argv
 from GetDataPath import *
 from utils import process_image
 from collections import Counter
+from enum import Enum
 
 cat=argv[1]
 mylayer=argv[2]
+mod=argv[3]
 
-featDim_set = [64, 128, 256, 512, 512] 
-cluster_num = featDim_set[int(mylayer)-1]
-if mylayer=='4':
+class featDim_set(Enum):
+    pool1=64
+    pool2=128
+    pool3=256
+    pool4=512
+    pool5=512
+    conv2_1=128
+    conv2_2=128
+    conv3_1=256
+    conv3_2=256
+    conv3_3=256
+    conv4_1=512
+    conv4_2=512
+    conv4_3=512
+
+cluster_num = featDim_set[mylayer].value
+if mylayer[4]=='4':
     cluster_num=256
 
-layer_name = 'pool'+mylayer
-
-file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
-cluster_file='/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
-save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/dictionary_'+cat+'.pickle'
+# file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
+# cluster_file='/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
+# save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/dictionary_'+cat+'.pickle'
 #file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature3/L3Feature'+cat
 #cluster_file = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL3/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
 #save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL3/dictionary_'+cat+'.pickle'
+# file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
+# cluster_file='/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
+# save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/dictionary_'+cat+'.pickle'
+if mod=='0':
+    file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
+    cluster_file='/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
+    save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/dictionary_'+cat+'.pickle'
+    if not os.path.exists('/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer+'/'):
+        os.mkdir('/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/prunL'+mylayer)
 
+if mod=='1':
+    cluster_file='/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/Portrait/special_test.pickle'
+    file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/Portrait/special_test_'
+    save_path1 = '/data2/xuyangf/OcclusionProject/NaiveVersion/prunning/Portrait/special_test.pickle'
 print('loading data...')
 
 fname = file_path+str(0)+'.npz'
@@ -66,7 +93,7 @@ loc_set=loc_set[:oldimg_index,:]
 
 
 with open(cluster_file, 'rb') as fh:
-    assignment, centers= pickle.load(fh)
+    assignment, centers,example= pickle.load(fh)
 
 print 'load finish'
 

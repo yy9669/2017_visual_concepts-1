@@ -2,25 +2,65 @@
 from __future__ import division
 import cv2
 import numpy as np
-import pickle
+import pickle,os
 import time,math
 from sklearn.cluster import KMeans
 from sys import argv
+from enum import Enum
+import sys
+from utils import *
 cat=argv[1]
 mylayer=argv[2]
+mod=argv[3]
 
-featDim_set = [64, 128, 256, 512, 512] 
+class featDim_set(Enum):
+    pool1=64
+    pool2=128
+    pool3=256
+    pool4=512
+    pool5=512
+    conv2_1=128
+    conv2_2=128
+    conv3_1=256
+    conv3_2=256
+    conv3_3=256
+    conv4_1=512
+    conv4_2=512
+    conv4_3=512
 
-cluster_num = featDim_set[int(mylayer)-1]
-if mylayer=='4':
+cluster_num = featDim_set[mylayer].value
+if mylayer[4]=='4':
     cluster_num=256
+# Chen Liu Project
+# cluster_num=128
 
-layer_name = 'pool'+mylayer
-save_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
-file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
+# save_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
+# file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
 
-Arf_set = [6, 16, 44, 100, 212]
-patch_size=Arf_set[int(mylayer)-1]
+if mod=='0':
+    save_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/vgg16_'+cat+'_K'+str(cluster_num)+'.pickle'
+    file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/feature'+mylayer+'/L'+mylayer+'Feature'+cat
+    if not os.path.exists('/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer+'/'):
+        os.mkdir('/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/clusterL'+mylayer)
+
+if mod=='1':
+    save_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/cluster/Portrait/special_test.pickle'
+    file_path = '/data2/xuyangf/OcclusionProject/NaiveVersion/feature/Portrait/special_test_'
+class Arf_set(Enum):
+    pool1=6
+    pool2=16
+    pool3=44
+    pool4=100
+    pool5=212
+    conv2_1=10
+    conv2_2=14
+    conv3_1=24
+    conv3_2=32
+    conv3_3=40
+    conv4_1=60
+    conv4_2=76
+    conv4_3=92
+patch_size=Arf_set[mylayer].value
 
 fname = file_path+str(0)+'.npz'
 ff = np.load(fname)
@@ -83,33 +123,32 @@ num = 100
 print('save top {0} images for each cluster'.format(num))
 example = [None for nn in range(cluster_num)]
 
-# for k in range(cluster_num):
-#     target = centers[k]
-#     index = np.where(assignment == k)[0]
-#     num = min(num, len(index))
+for k in range(cluster_num):
+    target = centers[k]
+    index = np.where(assignment == k)[0]
+    num = min(num, len(index))
     
-#     tempFeat = feat_set[:,index]
-#     error = np.sum((tempFeat.T - target)**2, 1)
-#     sort_idx = np.argsort(error)
-#     patch_set = np.zeros(((patch_size**2)*3, num)).astype('uint8')
-#     for idx in range(num):
-#         patchindex=index[sort_idx[idx]]
+    tempFeat = feat_set[:,index]
+    error = np.sum((tempFeat.T - target)**2, 1)
+    sort_idx = np.argsort(error)
+    patch_set = np.zeros(((patch_size**2)*3, num)).astype('uint8')
+    for idx in range(num):
+        patchindex=index[sort_idx[idx]]
 
-#         oimage=cv2.imread(originimage[patchindex], cv2.IMREAD_UNCHANGED)
-#         hi=int(loc_set[patchindex,3])
-#         wi=int(loc_set[patchindex,4])
-#         Arf=int(loc_set[patchindex,5])-int(loc_set[patchindex,3])
-#         patch = oimage[hi:hi + Arf, wi:wi + Arf, :]
-#         if idx==0:
-#             savefeat.append(feat_set[:,patchindex])
-#             print(feat_set[:,patchindex][0])
-
-#         patch_set[:,idx] = patch.flatten()
+        oimage=cv2.imread(originimage[patchindex], cv2.IMREAD_UNCHANGED)
+        # oimage,_,__=process_image(oimage, '_',0)
+        oimage,_,__=process_image2(oimage)
+        oimage+=np.array([104., 117., 124.])
+        hi=int(loc_set[patchindex,3])
+        wi=int(loc_set[patchindex,4])
+        Arf=int(loc_set[patchindex,5])-int(loc_set[patchindex,3])
+        patch = oimage[hi:hi + Arf, wi:wi + Arf, :]
+        patch_set[:,idx] = patch.flatten()
         
-#     example[k] = np.copy(patch_set)
-#     if k%20 == 0:
-#         print(k)
+    example[k] = np.copy(patch_set)
+    if k%20 == 0:
+        print(k)
         
 
 with open(save_path, 'wb') as fh:
-    pickle.dump([assignment, centers], fh)
+    pickle.dump([assignment, centers,example], fh)
