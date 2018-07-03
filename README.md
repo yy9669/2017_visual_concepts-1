@@ -17,14 +17,19 @@
   - vc_share.py: get the relationship between the importance of VC and its shared times 
 - analysis
   - draw\_picture/: draw some results
+- fine tune process
+  - generate_images: generate some training and testing images 
+  - finetune_aperture_1VC.py: fine tune with 1 aperture opened images
+  - finetune_aperture_1VC.py: fine tune with 1 or 2 apertures opened images
+  - network_test.py: test
+
 - utils
   - ProjectUtils.py: some useful utils for VGG
   - feature_extractor.py: extract hidden layer features in VGG
   - temp.py: some test code
   -	testvgg.py: similar to feature-extractor.py, useful when you are tring to apply Gaussian template to the hidden layer.
-  - utils.py: some useful utils in preprocessing. the only useful one is process_image
-  
-- update
-add some fine tune code. I fine tune the top 2 layer of vgg with aperture images which only show one of the top 10 visual concepts
-  - get_aperture_image.py: get the training images
-  - finetune_aperture_1VC.py: the fine-tuning process
+  - utils.py: some useful utils, especially in preprocessing. the only useful one is process_image
+
+- others
+  - checking_redundency.py: use higer layer's vision to delete some redundency in visual concepts.
+  - complete_success_combination.py: found that single big aperture is more useful in recognition than several small apertures
