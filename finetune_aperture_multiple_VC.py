@@ -14,18 +14,23 @@ from ProjectUtils import *
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.slim.nets
+from sys import argv
+import time
+import sys
 
+occlusion_level=argv[1]
+save_name=argv[2]
+mod=argv[3]
 VGG_MEAN = [123.68, 116.78, 103.94]
 num_workers=4
 batch_size=128
 weight_decay=0.001
 dropout_keep_prob=0.5
-learning_rate1=0.0005
+learning_rate1=0.005
 learning_rate_decay_factor=0.1
-num_epochs=50
+num_epochs=20
 finetunedir=os.path.join('/data2/xuyangf/OcclusionProject/NaiveVersion/checkpoint')
-model_path=os.path.join('/home/xuyangf/project/ML_deliverables/Siamese_iclr17_tf-master/cache','checkpoints','vgg_16.ckpt')
-# batch_size = 40
+model_path='/data2/xuyangf/OcclusionProject/NaiveVersion/checkpoint/fine_tuned_with_portrait'
 # scale_size = vgg.vgg_16.default_image_size
 
 # # Runtime params
@@ -41,24 +46,37 @@ model_path=os.path.join('/home/xuyangf/project/ML_deliverables/Siamese_iclr17_tf
 # 		_, vgg_end_points = vgg.vgg_16( input_images, is_training=True)
 
 train_dir='/data2/xuyangf/OcclusionProject/NaiveVersion/CroppedImage'
-val_dir='/data2/xuyangf/OcclusionProject/NaiveVersion/ValSet'
+# val_dir='/data2/xuyangf/OcclusionProject/NaiveVersion/ValSet'
+val_file_name='/data2/haow3/data/imagenet/dataset/val_crop_'+occlusion_level+'.txt'
 train_filenames, train_labels = list_images(train_dir)
-val_filenames, val_labels = list_images(val_dir)
+val_filenames, val_labels = list_images_from_txt(val_file_name)
+
+train_dir2='/data2/xuyangf/OcclusionProject/NaiveVersion/ApertureImage/train/bubble_image/top10vc'
+train_filenames2, train_labels2 = list_images(train_dir2)
+print(len(set(train_labels2)))
 
 
-train_dir2='/data2/xuyangf/OcclusionProject/NaiveVersion/PortraitImages/train'
-val_dir2='/data2/xuyangf/OcclusionProject/NaiveVersion/PortraitImages/val'
-train_filenames2, train_labels2 = list_images_from_additional_set(train_dir2)
-val_filenames2, val_labels2 = list_images_from_additional_set(val_dir2)
+train_dir3='/data2/xuyangf/OcclusionProject/NaiveVersion/PortraitImages/train'
+train_filenames3, train_labels3 = list_images_from_additional_set(train_dir3)
 
-train_filenames=train_filenames+train_filenames2
-train_labels=train_labels+train_labels2
+train_dir4='/data2/xuyangf/OcclusionProject/NaiveVersion/ApertureImage/train/bubble_image/top10vc_Portrait'
+train_filenames4, train_labels4 = list_images_from_additional_set(train_dir4)
+print(len(set(train_labels4)))
 
-val_filenames=val_filenames+val_filenames2
-val_labels=val_labels+val_labels2
+
+if mod == '1':
+	train_filenames=train_filenames+train_filenames2+train_filenames3+train_filenames4
+	train_labels=train_labels+train_labels2+train_labels3+train_labels4
+else:
+	train_filenames=train_filenames+train_filenames2+train_filenames3
+	train_labels=train_labels+train_labels2+train_labels3	
+
+# train_filenames=train_filenames+train_filenames2
+# train_labels=train_labels+train_labels2
 
 num_classes = len(set(train_labels))
 print(num_classes)
+
 graph = tf.Graph()
 with graph.as_default():
 	def _parse_function(filename, label):
@@ -137,17 +155,15 @@ with graph.as_default():
 		logits, _ = vgg.vgg_16(images, num_classes=num_classes, is_training=is_training,
 	                           dropout_keep_prob=dropout_keep_prob)
 
-	# Specify where the model checkpoint is (pretrained weights).
-
-	# Restore only the layers up to fc7 (included)
-	# Calling function `init_fn(sess)` will load all the pretrained weights.
-	variables_to_restore = tf.contrib.framework.get_variables_to_restore(exclude=['vgg_16/fc8','vgg_16/fc7'])
+	variables_to_restore = tf.contrib.framework.get_variables_to_restore()
 	init_fn = tf.contrib.framework.assign_from_checkpoint_fn(model_path, variables_to_restore)
 
 	# Initialization operation from scratch for the new "fc8" layers
 	# `get_variables` will only return the variables whose name starts with the given pattern
 	fc8_variables = tf.contrib.framework.get_variables('vgg_16/fc8')
 	fc7_variables = tf.contrib.framework.get_variables('vgg_16/fc7')
+	all_variables=fc8_variables+fc7_variables+tf.contrib.framework.get_variables('vgg_16/fc6')+tf.contrib.framework.get_variables('vgg_16/pool5')+tf.contrib.framework.get_variables('vgg_16/conv5')+tf.contrib.framework.get_variables('vgg_16/pool4')+tf.contrib.framework.get_variables('vgg_16/conv4')
+
 	# fc8_init = tf.variables_initializer(fc8_variables)
 	# ---------------------------------------------------------------------
 	# Using tf.losses, any loss is added to the tf.GraphKeys.LOSSES collection
@@ -165,7 +181,7 @@ with graph.as_default():
                                       staircase=True,
                                       name='exponential_decay_learning_rate')
 	fc8_optimizer = tf.train.MomentumOptimizer( learning_rate, 0.9)
-	fc8_train_op = fc8_optimizer.minimize(loss, var_list=fc8_variables+fc7_variables,global_step=global_step)
+	fc8_train_op = fc8_optimizer.minimize(loss, var_list=all_variables,global_step=global_step)
 
 	# Then we want to finetune the entire model for a few epochs.
 	# We run minimize the loss only with respect to all the variables.
@@ -210,6 +226,7 @@ with tf.Session(graph=graph,config=config) as sess:
 	    print('Train accuracy: %f' % train_acc)
 	    print('Val accuracy: %f\n' % val_acc)
 	    print(sess.run(global_step))
+	    print(time.ctime(time.time()))
 	    #print(sess.run(tf.contrib.framework.get_variables('vgg_16/fc8/biases/Momentum')))
 	    #break
-	saver.save(sess, os.path.join(finetunedir, 'fine_tuned_with_portrait'))
+	saver.save(sess, os.path.join(finetunedir, save_name))

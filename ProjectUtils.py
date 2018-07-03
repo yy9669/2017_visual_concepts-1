@@ -1,7 +1,7 @@
 import json
 import warnings
 import os
-
+import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import tensorflow.contrib.slim.nets
@@ -36,6 +36,44 @@ def decode_predictions(preds, top=5):
         results.append(result)
 
     return results
+def list_images_from_txt(fname):
+    """
+    Get all the images and labels in directory/label/*.jpg
+    """
+    # labels = os.listdir(directory)
+    # files_and_labels = []
+    # for label in labels:
+    #     for f in os.listdir(os.path.join(directory, label)):
+    #         files_and_labels.append((os.path.join(directory, label, f), label))
+    # print(files_and_labels)
+    files_and_labels = []
+    # for file in os.listdir(directory):
+    #     files_and_labels.append((os.path.join(directory,file),file[:9]))
+    directory="/data2/haow3/data/imagenet/dataset/"
+    for line in open(fname):
+        s=line.split()[0]
+        files_and_labels.append((os.path.join(directory,s),s[s.find('/')+1:s.find('/')+10]))
+    filenames,  labels = zip(*files_and_labels)
+    filenames = list(filenames)
+
+    # labels = list(labels)
+    # unique_labels = list(set(labels))
+
+    # label_to_int = {}
+    fpath = '/data2/xuyangf/OcclusionProject/utils/my_class_index.json'
+    CLASS_INDEX = json.load(open(fpath))
+
+    unique_labels=[]
+    for i in range(0,100):
+        unique_labels.append(CLASS_INDEX[str(i)][0])
+    label_to_int = {}
+    for i, label in enumerate(unique_labels):
+        label_to_int[label] = i
+    for i, label in enumerate(unique_labels):
+        label_to_int[label] = i
+
+    labels = [label_to_int[l] for l in labels]
+    return filenames, labels
 
 def list_images(directory):
     """
@@ -72,6 +110,29 @@ def list_images(directory):
     labels = [label_to_int[l] for l in labels]
     return filenames, labels
 
+def list_images_from_additional_set(directory):
+    filenames=[]
+    labels=[]
+    for file in os.listdir(directory):
+        filenames.append(os.path.join(directory,file))
+        labels.append(100)
+    return filenames,labels
+
+def get_vc_result(sess, vc_result, is_training, dataset_init_op):
+    """
+    Check the accuracy of the model on either train or val (depending on dataset_init_op).
+    """
+    # Initialize the correct dataset
+    sess.run(dataset_init_op)
+    all_vc_result=[]
+    while True:
+        try:
+            batch_vc_result = sess.run(vc_result, {is_training: False})
+            all_vc_result.append(batch_vc_result)
+        except tf.errors.OutOfRangeError:
+            break
+    return     np.concatenate(all_vc_result,axis=0)
+
 def check_accuracy(sess, correct_prediction, is_training, dataset_init_op):
     """
     Check the accuracy of the model on either train or val (depending on dataset_init_op).
@@ -90,3 +151,17 @@ def check_accuracy(sess, correct_prediction, is_training, dataset_init_op):
     # Return the fraction of datapoints that were correctly classified
     acc = float(num_correct) / num_samples
     return acc
+
+def check_prob(sess, logit, is_training, dataset_init_op):
+    """
+    Check the prob
+    """
+    # Initialize the correct dataset
+    sess.run(dataset_init_op)
+    num_correct, num_samples = 0, 0
+    while True:
+        try:
+            all_logit = sess.run(logit, {is_training: False})
+        except tf.errors.OutOfRangeError:
+            break
+    return all_logit

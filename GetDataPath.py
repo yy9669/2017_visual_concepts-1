@@ -23,3 +23,14 @@ def LoadImage(cat):
 		for s in os.listdir(datapath[i]) 
 		if ( catname[i][int(cat)] in s ) ]
 	return image_path
+
+datapath2=[]
+datapath2.append('/data2/haow3/data/imagenet/dataset/val_crop_0')
+def LoadImage2(cat):
+	image_path=[]
+	for i in range(len(datapath2)):
+		image_path+=[os.path.join(datapath2[i],s) 
+		for s in os.listdir(datapath2[i]) 
+		if ( catname[i][int(cat)] in s ) ]
+	return image_path
+

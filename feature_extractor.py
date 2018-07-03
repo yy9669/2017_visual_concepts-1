@@ -15,7 +15,7 @@ from scipy.optimize import linear_sum_assignment
 class FeatureExtractor:
     def __init__(self, which_layer='pool4', which_snapshot=200000, from_scratch=False):
         # params
-        self.batch_size = 40
+        self.batch_size = 1
         self.scale_size = vgg.vgg_16.default_image_size
 
         # Runtime params
@@ -32,7 +32,10 @@ class FeatureExtractor:
         # self.pool4 = vgg_end_points['vgg_16/pool4']
         # with tf.variable_scope('VC', reuse=False):
         #     self.tight_loss, self.tight_end_points = online_clustering(self.pool4, 512)
-        self.features = vgg_end_points['vgg_16/' + which_layer]  # TODO
+        if which_layer[0]>'0' and which_layer[0]<='9':
+            self.features = vgg_end_points['vgg_16_'+which_layer[0]+'/' + which_layer[1:]]
+        else:
+            self.features = vgg_end_points['vgg_16/' + which_layer]  # TODO
 
         # Create restorer and saver
         restorer = get_init_restorer()
@@ -82,6 +85,7 @@ class FeatureExtractor:
                 #print(paths[i * self.batch_size + j])
                 #print(img.shape)
                 batch_images[j],batch_blank[j][0],batch_blank[j][1] = process_image(img, paths[i * self.batch_size + j], augment=0)
+                # batch_images[j],batch_blank[j][0],batch_blank[j][1] = process_image2(img)
             out_features = self.extract_from_batch_images(batch_images)
             feature_list.append(out_features)
             image_list.append(batch_images)
