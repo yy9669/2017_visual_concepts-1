@@ -84,7 +84,7 @@ with graph.as_default():
 		image_decoded = tf.image.decode_jpeg(image_string, channels=3)          # (1)
 		image = tf.cast(image_decoded, tf.float32)
 
-		smallest_side = 256.0
+		smallest_side = 224.0
 		height, width = tf.shape(image)[0], tf.shape(image)[1]
 		height = tf.to_float(height)
 		width = tf.to_float(width)
