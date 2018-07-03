@@ -399,16 +399,6 @@ def get_all_feature(img,myextractor):
     myfeature=np.reshape(myfeature,(-1,))
     return myfeature
 
-# return numpy gaussian mask
-def generate_gaussian_mask(x,y,hiddenlayer_shape):
-    mask=np.ones(hiddenlayer_shape)
-    gaussian=np.array([[0.875,0.75,0.625,0.75,0.875],[0.75,0.375,0.25,0.375,0.75],[0.625,0.25,0,0.25,0.625],[0.75,0.375,0.25,0.375,0.75],[0.875,0.75,0.625,0.75,0.875]])
-    for i in range(0,5):
-        for j in range(0,5):
-            mask[x-2+i,y-2+j,:]=gaussian[i,j]
-    return mask
 
-# def add_mask(feature,mask):    
-#     return
 
     
